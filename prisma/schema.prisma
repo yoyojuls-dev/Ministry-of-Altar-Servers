@@ -1,0 +1,269 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ===== SEPARATE USER MODELS =====
+
+// Admin User Model
+model AdminUser {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  adminId       String?  @unique // Admin ID
+  name          String?
+  birthdate     DateTime? // Birthdate
+  email         String?  @unique
+  emailVerified DateTime?
+  image         String?
+  hashedPassword String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  role          Role     @default(ADMIN)
+  
+  // Admin-specific fields
+  permissions   String[] // e.g., ["manage_users", "manage_thesis"]
+  college       String?  // College (Science, Fine Arts, etc.)
+  department    String?  // Department (Computer Studies, etc.)
+  position      String?  // e.g., "Department Head", "Admin Officer"
+  
+  // Relations
+  accounts          Account[]       @relation("AdminAccounts")
+  uploadedThesis    Thesis[]        @relation("UploadedBy")
+  approvedThesis    Thesis[]        @relation("ApprovedThesis")
+}
+
+// Student User Model  
+model StudentUser {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  studentId     String?  @unique // Student ID (Format: TUPM-YY-XXXX)
+  name          String?
+  birthdate     DateTime? // Birthdate
+  email         String?  @unique
+  emailVerified DateTime?
+  image         String?
+  hashedPassword String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  role          Role     @default(USER)
+  
+  // Student-specific fields
+  college       String?  // College (Science, Fine Arts, etc.)
+  department    String?  // Department (Computer Studies, etc.)
+  course        String?  // Course (Bachelor of Science in Computer Science)
+  
+  // Relations
+  accounts          Account[]       @relation("StudentAccounts")
+  favorites         Favorite[]
+  downloads         Download[]
+  thesisRatings     ThesisRating[]
+}
+
+// Account model to support both user types
+model Account {
+  id                 String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId             String  @db.ObjectId
+  userType           UserType // Determines if admin or student
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.String
+  access_token       String?  @db.String
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.String
+  session_state      String?
+
+  // Relations (conditional based on userType)
+  adminUser     AdminUser?   @relation("AdminAccounts", fields: [adminUserId], references: [id], onDelete: Cascade)
+  adminUserId   String?      @db.ObjectId
+  
+  studentUser   StudentUser? @relation("StudentAccounts", fields: [studentUserId], references: [id], onDelete: Cascade)
+  studentUserId String?      @db.ObjectId
+
+  @@unique([provider, providerAccountId])
+}
+
+// ===== THESIS MANAGEMENT MODELS =====
+
+model Thesis {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  title String
+  abstract String
+  fullContent String? // Optional - for future use when content is needed
+  
+  // Author Information
+  authorName String // Can contain multiple authors separated by commas
+  authorEmail String?
+  studentId String?
+  
+  // Academic Information
+  advisorName String
+  coAdvisorName String?
+  committeeMembers String[] // Array of committee member names
+  department String
+  program String // e.g., "Bachelor of Science in Computer Science"
+  university String @default("Technological University of the Philippines - Manila")
+  degreeLevel DegreeLevel
+  
+  // Thesis Details
+  categoryId String @db.ObjectId
+  keywords String[] // Array of keywords
+  language String @default("English")
+  
+  // File Storage
+  pdfUrl String? // URL to stored PDF file
+  coverImageUrl String? // URL to cover/thumbnail image
+  
+  // Content Structure
+  references String[] // Array of references/bibliography
+  acknowledgments String?
+  
+  // ===== NEW: CHAPTER CONTENT FIELDS =====
+  chapter1 String? @db.String // Chapter 1: Introduction
+  chapter2 String? @db.String // Chapter 2: Review of Related Literature
+  chapter3 String? @db.String // Chapter 3: Methodology
+  chapter4 String? @db.String // Chapter 4: Results and Discussion
+  chapter5 String? @db.String // Chapter 5: Summary, Conclusion, Recommendations
+  referencesText String? @db.String // References/Bibliography (full text)
+  appendices String? @db.String // Appendices (full text)
+  
+  // Dates
+  submissionDate DateTime
+  approvalDate DateTime?
+  defenseDate DateTime?
+  publicationYear Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Status and Approval
+  status ThesisStatus @default(PENDING)
+  approvedByAdminId String? @db.ObjectId // Admin who approved
+  rejectionReason String?
+  
+  // Statistics
+  downloadCount Int @default(0)
+  viewCount Int @default(0)
+  averageRating Float @default(0)
+  totalRatings Int @default(0)
+  
+  // Metadata
+  citation String? // Auto-generated citation
+  digitalLibraryId String? @unique // Unique identifier for digital library
+  
+  // Relations
+  category Category @relation(fields: [categoryId], references: [id])
+  uploadedBy AdminUser @relation("UploadedBy", fields: [uploadedByUserId], references: [id])
+  uploadedByUserId String @db.ObjectId
+  approvedByAdmin AdminUser? @relation("ApprovedThesis", fields: [approvedByAdminId], references: [id])
+  
+  favorites Favorite[]
+  downloads Download[]
+  ratings ThesisRating[]
+  
+  @@index([categoryId])
+  @@index([status])
+  @@index([submissionDate])
+  @@index([authorName])
+  @@index([title])
+  @@index([publicationYear])
+}
+
+// Category model for organizing thesis
+model Category {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  name String @unique // e.g., "Computer Science", "Information Technology"
+  description String?
+  code String @unique // e.g., "CS", "IT", "IS", "DA"
+  color String @default("#ef4444") // For UI theming (red color)
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  thesis Thesis[]
+  
+  @@index([isActive])
+}
+
+// Favorite model for students to save thesis
+model Favorite {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  userId String @db.ObjectId
+  thesisId String @db.ObjectId
+  createdAt DateTime @default(now())
+  
+  user StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  thesis Thesis @relation(fields: [thesisId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, thesisId])
+  @@index([userId])
+  @@index([thesisId])
+}
+
+// Download tracking model
+model Download {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  userId String @db.ObjectId
+  thesisId String @db.ObjectId
+  downloadedAt DateTime @default(now())
+  ipAddress String?
+  userAgent String?
+  
+  user StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  thesis Thesis @relation(fields: [thesisId], references: [id], onDelete: Cascade)
+  
+  @@index([thesisId])
+  @@index([userId])
+  @@index([downloadedAt])
+}
+
+// Thesis rating model
+model ThesisRating {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  userId String @db.ObjectId
+  thesisId String @db.ObjectId
+  rating Int // 1-5 stars
+  comment String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  thesis Thesis @relation(fields: [thesisId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, thesisId])
+  @@index([thesisId])
+  @@index([rating])
+}
+
+// ===== ENUMS =====
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum UserType {
+  ADMIN
+  STUDENT
+}
+
+enum ThesisStatus {
+  PENDING      // Waiting for admin approval
+  APPROVED     // Approved and published
+  REJECTED     // Rejected by admin
+  DRAFT        // Draft state (not submitted)
+  ARCHIVED     // Archived thesis
+}
+
+enum DegreeLevel {
+  BACHELOR     // Bachelor's degree
+  MASTER       // Master's degree  
+  DOCTORATE    // PhD/Doctoral degree
+  DIPLOMA      // Diploma programs
+}
