@@ -1,4 +1,12 @@
-import { CartProductType } from "@/app/product/[productId]/ProductDetails";
+export type CartProductType = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  quantity: number;
+  image?: string;
+};
+
 import {
   createContext,
   useCallback,

@@ -29,7 +29,8 @@ export async function middleware(request: NextRequest) {
     console.log("✅ Public route - allowing access");
     
     // If already logged in and trying to access login pages, redirect to dashboard
-    if (token && pathname.includes('/login')) {
+    // EXCEPT for admin login - allow access to login page even if logged in
+    if (token && pathname.includes('/login') && pathname !== '/admin/login') {
       console.log("🔄 Already logged in, redirecting to dashboard");
       if (token.role === 'ADMIN') {
         return NextResponse.redirect(new URL('/admin', request.url));
