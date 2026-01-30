@@ -1,22 +1,19 @@
-import { Metadata } from "next";
-import getCurrentUser from "@/actions/getCurrentUser";
-import { redirect } from "next/navigation";
-import AdminDashboard from "./AdminDashboard";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Admin Dashboard - Thesis Archive Management System",
-  description: "Admin panel for managing thesis documents and categories",
-};
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-const AdminPage = async () => {
-  const currentUser = await getCurrentUser();
+export default function AdminPage() {
+  const router = useRouter();
 
-  // Redirect if not admin
-  if (!currentUser || currentUser.role !== "ADMIN") {
-    redirect("/admin/login");
-  }
+  useEffect(() => {
+    // Redirect to dashboard
+    router.push("/admin/dashboard");
+  }, [router]);
 
-  return <AdminDashboard currentUser={currentUser} />;
-};
-
-export default AdminPage;
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="text-xl">Redirecting to admin dashboard...</div>
+    </div>
+  );
+}

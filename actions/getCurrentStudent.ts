@@ -23,9 +23,6 @@ export default async function getCurrentStudent() {
       where: {
         email: session.user.email,
       },
-      include: {
-        orders: true,
-      },
     });
 
     if (!currentStudent) {
