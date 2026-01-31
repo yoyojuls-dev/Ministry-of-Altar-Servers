@@ -1,72 +1,69 @@
-/* app/admin/login/page.tsx */
+/* app/admin/register/page.tsx */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 import Image from 'next/image';
-import { signIn, useSession } from 'next-auth/react';
 
-export default function AdminLogin() {
+export default function AdminRegister() {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
+    name: '',
     email: '',
     password: '',
+    confirmPassword: '',
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [justLoggedIn, setJustLoggedIn] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
-  const { data: session, status } = useSession();
-
-  useEffect(() => {
-    // Check if user is already logged in
-    if (status === 'authenticated' && session?.user.role === 'ADMIN') {
-      router.push('/admin/dashboard');
-    }
-  }, [router, session, status]);
-
-  useEffect(() => {
-    if (justLoggedIn && status === 'authenticated') {
-      if (session?.user.role === 'ADMIN') {
-        toast.success('Login successful!');
-        router.push('/admin/dashboard');
-      } else {
-        toast.error('Access denied. Admin privileges required.');
-      }
-      setJustLoggedIn(false);
-    }
-  }, [justLoggedIn, session, status, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.email || !formData.password) {
+    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
       toast.error('Please fill in all fields');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast.error('Password must be at least 6 characters long');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Use NextAuth signIn
-      const result = await signIn('credentials', {
-        email: formData.email,
-        password: formData.password,
-        redirect: false,
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          role: 'ADMIN',
+        }),
       });
 
-      if (result?.error) {
-        toast.error(result.error || 'Login failed');
-        return;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Registration failed');
       }
 
-      if (result?.ok) {
-        setJustLoggedIn(true);
-      }
+      toast.success('Admin account created successfully!');
+      router.push('/admin/login');
     } catch (error) {
-      console.error('Login error:', error);
-      toast.error(error instanceof Error ? error.message : 'An error occurred during login');
+      console.error('Registration error:', error);
+      toast.error(error instanceof Error ? error.message : 'An error occurred during registration');
     } finally {
       setIsLoading(false);
     }
@@ -115,53 +112,72 @@ export default function AdminLogin() {
         ))}
       </div>
 
-      {/* Login Card */}
+      {/* Registration Card */}
       <div className="relative z-10 w-full max-w-md mx-4">
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
           {/* Header Section with Logo and Title */}
-          <div className="bg-gradient-to-b from-blue-600 to-blue-700 px-8 py-12 text-center relative">
-            {/* Ministry Logo - Just the image, minimized */}
-            <div className="mb-6 flex justify-center">
-              <div className="relative w-20 h-20">
+          <div className="bg-gradient-to-b from-blue-600 to-blue-700 px-8 py-8 text-center relative">
+            {/* Ministry Logo */}
+            <div className="mb-4 flex justify-center">
+              <div className="relative w-16 h-16">
                 <Image
                   src="/images/MAS LOGO.png"
                   alt="Ministry of Altar Servers Logo"
                   fill
                   className="object-contain drop-shadow-lg"
-                  sizes="(max-width: 768px) 80px, 80px"
+                  sizes="64px"
                   priority
                 />
               </div>
             </div>
 
             {/* Title */}
-            <h1 className="text-white text-2xl font-bold mb-2 drop-shadow-lg font-serif">
+            <h1 className="text-white text-xl font-bold mb-2 drop-shadow-lg font-serif">
               MINISTRY OF ALTAR SERVERS
             </h1>
             <p className="text-blue-100 text-sm tracking-wide opacity-90">
-              Administrative Portal
+              Admin Registration
             </p>
           </div>
 
-          {/* Login Form */}
-          <div className="px-8 py-8">
-            {/* Login Button Header */}
-            <div className="mb-8 text-center">
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-3 rounded-full font-semibold text-lg shadow-lg">
-                Login as Administrator
+          {/* Registration Form */}
+          <div className="px-8 py-6">
+            {/* Warning Message */}
+            <div className="mb-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
+              <div className="flex items-start">
+                <svg className="w-5 h-5 text-amber-600 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.664-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <div>
+                  <p className="text-sm text-amber-800 font-medium mb-1">One-Time Setup</p>
+                  <p className="text-sm text-amber-700">Create your admin account. This registration page will be disabled after first use.</p>
+                </div>
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Email/Username Field */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Name Field */}
+              <div>
+                <input
+                  type="text"
+                  name="name"
+                  placeholder="Full Name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 placeholder-gray-400 transition-all duration-200"
+                  disabled={isLoading}
+                />
+              </div>
+
+              {/* Email Field */}
               <div>
                 <input
                   type="email"
                   name="email"
-                  placeholder="Username or Email"
+                  placeholder="Email Address"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 placeholder-gray-400 transition-all duration-200"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 placeholder-gray-400 transition-all duration-200"
                   disabled={isLoading}
                 />
               </div>
@@ -171,10 +187,10 @@ export default function AdminLogin() {
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
-                  placeholder="Password"
+                  placeholder="Password (min. 6 characters)"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 placeholder-gray-400 transition-all duration-200 pr-12"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 placeholder-gray-400 transition-all duration-200 pr-12"
                   disabled={isLoading}
                 />
                 <button
@@ -193,63 +209,58 @@ export default function AdminLogin() {
                 </button>
               </div>
 
-              {/* Login Button */}
+              {/* Confirm Password Field */}
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  placeholder="Confirm Password"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 placeholder-gray-400 transition-all duration-200 pr-12"
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                  disabled={isLoading}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {showConfirmPassword ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    )}
+                  </svg>
+                </button>
+              </div>
+
+              {/* Register Button */}
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-xl font-semibold text-lg shadow-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95"
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-xl font-semibold text-lg shadow-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95 mt-6"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    Logging in...
+                    Creating Account...
                   </div>
                 ) : (
-                  'Login'
+                  'Create Admin Account'
                 )}
               </button>
 
-              {/* Account Links Section */}
-              <div className="space-y-3">
-                {/* Forgot Password */}
-                <div className="text-center">
-                  <Link 
-                    href="/admin/forgot-password" 
-                    className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
-                  >
-                    Forgot Password?
-                  </Link>
-                </div>
-
-                {/* Registration Link */}
-                <div className="text-center">
-                  <span className="text-gray-500 text-sm">Don&apos;t have an account? </span>
-                  <Link 
-                    href="/admin/register" 
-                    className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors hover:underline"
-                  >
-                    Create Admin Account
-                  </Link>
-                </div>
+              {/* Back to Login */}
+              <div className="text-center mt-4">
+                <Link 
+                  href="/admin/login" 
+                  className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
+                >
+                  ← Back to Login
+                </Link>
               </div>
-
-              {/* Divider */}
-              <div className="relative py-4">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-white text-gray-500">Or</span>
-                </div>
-              </div>
-
-              {/* Guest Login */}
-              <Link
-                href="/guest"
-                className="w-full border-2 border-blue-600 text-blue-600 py-4 rounded-xl font-semibold text-lg text-center block hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 active:scale-95"
-              >
-                Login as Guest
-              </Link>
             </form>
           </div>
         </div>

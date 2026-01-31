@@ -15,11 +15,11 @@ export default async function getCurrentAdmin() {
     }
 
     // Check if user is admin type
-    if ((session.user as any).userType !== "admin") {
+    if ((session.user as any).role !== "ADMIN") {
       return null;
     }
 
-    const currentAdmin = await prisma.adminUser.findUnique({
+    const currentAdmin = await prisma.user.findUnique({
       where: {
         email: session.user.email,
       },

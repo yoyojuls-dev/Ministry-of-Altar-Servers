@@ -1,4 +1,4 @@
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+import { authOptions } from "@/lib/authConfig";
 import { getServerSession } from "next-auth";
 import prisma from "@/libs/prismadb";
 
@@ -14,41 +14,23 @@ export default async function getCurrentUser() {
       return null;
     }
 
-    // Try to find admin user first
-    const adminUser = await prisma.adminUser.findUnique({
+    // Find user
+    const currentUser = await prisma.user.findUnique({
       where: {
         email: session.user.email,
       },
     });
 
-    if (adminUser) {
-      return {
-        ...adminUser,
-        createdAt: adminUser.createdAt.toISOString(),
-        updatedAt: adminUser.updatedAt.toISOString(),
-        emailVerified: adminUser.emailVerified?.toISOString() || null,
-        birthdate: adminUser.birthdate?.toISOString() || null,
-      };
+    if (!currentUser) {
+      return null;
     }
 
-    // If not admin, try student user
-    const studentUser = await prisma.studentUser.findUnique({
-      where: {
-        email: session.user.email,
-      },
-    });
-
-    if (studentUser) {
-      return {
-        ...studentUser,
-        createdAt: studentUser.createdAt.toISOString(),
-        updatedAt: studentUser.updatedAt.toISOString(),
-        emailVerified: studentUser.emailVerified?.toISOString() || null,
-        birthdate: studentUser.birthdate?.toISOString() || null,
-      };
-    }
-
-    return null;
+    return {
+      ...currentUser,
+      createdAt: currentUser.createdAt.toISOString(),
+      updatedAt: currentUser.updatedAt.toISOString(),
+      emailVerified: currentUser.emailVerified?.toISOString() || null,
+    };
   } catch (error: any) {
     console.error("Error in getCurrentUser:", error);
     return null;

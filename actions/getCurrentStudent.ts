@@ -14,12 +14,12 @@ export default async function getCurrentStudent() {
       return null;
     }
 
-    // Check if user is student type
-    if ((session.user as any).userType === "admin") {
+    // Check if user is not admin (i.e., student)
+    if ((session.user as any).role === "ADMIN") {
       return null;
     }
 
-    const currentStudent = await prisma.studentUser.findUnique({
+    const currentStudent = await prisma.user.findUnique({
       where: {
         email: session.user.email,
       },
