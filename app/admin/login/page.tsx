@@ -1,195 +1,141 @@
-/* app/admin/login/page.tsx */
-'use client';
+// app/admin/login/page.tsx - Updated with fixed Image component
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { toast } from 'react-hot-toast';
-import Link from 'next/link';
-import Image from 'next/image';
-import { signIn, useSession } from 'next-auth/react';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSession, signIn } from "next-auth/react";
+import toast from "react-hot-toast";
+import Link from "next/link";
+import Image from "next/image";
 
 export default function AdminLogin() {
-  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
+    email: "",
+    password: "",
   });
+  const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [justLoggedIn, setJustLoggedIn] = useState(false);
   const router = useRouter();
   const { data: session, status } = useSession();
 
   useEffect(() => {
-    // Check if user is already logged in
-    if (status === 'authenticated' && session?.user.role === 'ADMIN') {
-      router.push('/admin/dashboard');
+    // Redirect if already logged in as admin
+    if (status === "authenticated" && session?.user?.userType === "ADMIN") {
+      router.push("/admin");
     }
-  }, [router, session, status]);
-
-  useEffect(() => {
-    if (justLoggedIn && status === 'authenticated') {
-      if (session?.user.role === 'ADMIN') {
-        toast.success('Login successful!');
-        router.push('/admin/dashboard');
-      } else {
-        toast.error('Access denied. Admin privileges required.');
-      }
-      setJustLoggedIn(false);
-    }
-  }, [justLoggedIn, session, status, router]);
+  }, [session, status, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.email || !formData.password) {
-      toast.error('Please fill in all fields');
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      // Use NextAuth signIn
-      const result = await signIn('credentials', {
+      const result = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
+        userType: "ADMIN",
         redirect: false,
       });
 
       if (result?.error) {
-        toast.error(result.error || 'Login failed');
-        return;
-      }
-
-      if (result?.ok) {
-        setJustLoggedIn(true);
+        toast.error(result.error);
+      } else if (result?.ok) {
+        toast.success("Login successful!");
+        router.push("/admin");
+        router.refresh();
       }
     } catch (error) {
-      console.error('Login error:', error);
-      toast.error(error instanceof Error ? error.message : 'An error occurred during login');
+      toast.error("An error occurred. Please try again.");
+      console.error("Login error:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
   };
 
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-blue-600 to-blue-800 flex items-center justify-center">
+        <div className="text-center text-white">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-white mx-auto mb-4"></div>
+          <p className="text-lg">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-      {/* Animated Background */}
-      <div 
-        className="absolute inset-0 z-0"
-        style={{
-          background: 'linear-gradient(135deg, #4169E1 0%, #1E40AF 25%, #1E3A8A 50%, #312E81 75%, #4338CA 100%)',
-          backgroundSize: '400% 400%',
-          animation: 'gradientShift 15s ease infinite',
-        }}
-      />
-      
-      {/* Floating Clouds Animation */}
-      <div className="absolute inset-0 z-1">
-        <div className="absolute top-20 left-10 w-24 h-16 bg-white bg-opacity-10 rounded-full animate-float-slow"></div>
-        <div className="absolute top-32 right-20 w-32 h-20 bg-white bg-opacity-15 rounded-full animate-float-medium"></div>
-        <div className="absolute bottom-40 left-20 w-20 h-12 bg-white bg-opacity-20 rounded-full animate-float-fast"></div>
-        <div className="absolute bottom-20 right-40 w-28 h-18 bg-white bg-opacity-10 rounded-full animate-float-slow"></div>
-      </div>
+    <div className="min-h-screen bg-gradient-to-b from-blue-600 to-blue-800 flex items-center justify-center px-4 py-8">
+      <div className="w-full max-w-sm">
+        {/* Logo Section - Fixed with sizes prop */}
+        <div className="text-center mb-8">
+          <div className="relative w-48 h-32 mx-auto mb-4">
+            <Image
+              src="/images/MAS LOGO.png"
+              alt="Ministry of Altar Servers Logo"
+              fill
+              sizes="(max-width: 768px) 192px, 192px"
+              className="object-contain"
+              priority
+            />
+          </div>
+        </div>
 
-      {/* Sparkle Effects */}
-      <div className="absolute inset-0 z-1">
-        {[...Array(12)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-2 h-2 bg-yellow-300 rounded-full animate-twinkle opacity-60"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 3}s`,
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Login Card */}
-      <div className="relative z-10 w-full max-w-md mx-4">
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-          {/* Header Section with Logo and Title */}
-          <div className="bg-gradient-to-b from-blue-600 to-blue-700 px-8 py-12 text-center relative">
-            {/* Ministry Logo - Just the image, minimized */}
-            <div className="mb-6 flex justify-center">
-              <div className="relative w-20 h-20">
-                <Image
-                  src="/images/MAS LOGO.png"
-                  alt="Ministry of Altar Servers Logo"
-                  fill
-                  className="object-contain drop-shadow-lg"
-                  sizes="(max-width: 768px) 80px, 80px"
-                  priority
-                />
-              </div>
-            </div>
-
-            {/* Title */}
-            <h1 className="text-white text-2xl font-bold mb-2 drop-shadow-lg font-serif">
-              MINISTRY OF ALTAR SERVERS
-            </h1>
-            <p className="text-blue-100 text-sm tracking-wide opacity-90">
-              Administrative Portal
-            </p>
+        {/* Login Card */}
+        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-800 to-blue-900 px-8 py-6 text-center">
+            <h2 className="text-white text-xl font-semibold">Login as Administrator</h2>
           </div>
 
-          {/* Login Form */}
-          <div className="px-8 py-8">
-            {/* Login Button Header */}
-            <div className="mb-8 text-center">
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-3 rounded-full font-semibold text-lg shadow-lg">
-                Login as Administrator
-              </div>
-            </div>
-
+          {/* Form */}
+          <div className="px-8 py-8 space-y-6">
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Email/Username Field */}
+              {/* Email Input */}
               <div>
                 <input
                   type="email"
                   name="email"
-                  placeholder="Username or Email"
                   value={formData.email}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 placeholder-gray-400 transition-all duration-200"
-                  disabled={isLoading}
+                  onChange={handleChange}
+                  placeholder="Username or Email"
+                  required
+                  className="w-full px-4 py-4 bg-gray-100 border-0 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                 />
               </div>
 
-              {/* Password Field */}
+              {/* Password Input */}
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
-                  placeholder="Password"
                   value={formData.password}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 placeholder-gray-400 transition-all duration-200 pr-12"
-                  disabled={isLoading}
+                  onChange={handleChange}
+                  placeholder="Password"
+                  required
+                  className="w-full px-4 py-4 pr-12 bg-gray-100 border-0 rounded-xl text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
-                  disabled={isLoading}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    {showPassword ? (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                    ) : (
+                  {showPassword ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L12 12m-2.122-2.122L7.757 7.757m13.486 13.486L18.121 18.121m3.172-3.172l-3.172 3.172m0 0L12 12m6.121 6.121L12 12m6.121 6.121l3.172 3.172" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    )}
-                  </svg>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  )}
                 </button>
               </div>
 
@@ -197,113 +143,71 @@ export default function AdminLogin() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-xl font-semibold text-lg shadow-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95"
+                className="w-full bg-gradient-to-r from-blue-800 to-blue-900 text-white py-4 rounded-xl font-semibold text-lg hover:from-blue-900 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-[1.02] active:scale-[0.98]"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    Logging in...
+                    Signing In...
                   </div>
                 ) : (
-                  'Login'
+                  "Login"
                 )}
               </button>
-
-              {/* Account Links Section */}
-              <div className="space-y-3">
-                {/* Forgot Password */}
-                <div className="text-center">
-                  <Link 
-                    href="/admin/forgot-password" 
-                    className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
-                  >
-                    Forgot Password?
-                  </Link>
-                </div>
-
-                {/* Registration Link */}
-                <div className="text-center">
-                  <span className="text-gray-500 text-sm">Don&apos;t have an account? </span>
-                  <Link 
-                    href="/admin/register" 
-                    className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors hover:underline"
-                  >
-                    Create Admin Account
-                  </Link>
-                </div>
-              </div>
-
-              {/* Divider */}
-              <div className="relative py-4">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-white text-gray-500">Or</span>
-                </div>
-              </div>
-
-              {/* Guest Login */}
-              <Link
-                href="/guest"
-                className="w-full border-2 border-blue-600 text-blue-600 py-4 rounded-xl font-semibold text-lg text-center block hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 active:scale-95"
-              >
-                Login as Guest
-              </Link>
             </form>
+
+            {/* Forgot Password */}
+            <div className="text-center">
+              <Link 
+                href="/admin/forgot-password" 
+                className="text-gray-500 text-sm hover:text-gray-700 transition-colors"
+              >
+                Forgot Password?
+              </Link>
+            </div>
+
+            {/* Divider */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500 font-medium">Or</span>
+              </div>
+            </div>
+
+            {/* Register Link */}
+            <div className="text-center">
+              <Link 
+                href="/admin/register" 
+                className="text-blue-600 text-sm font-medium hover:text-blue-700 transition-colors"
+              >
+                Create New Admin Account
+              </Link>
+            </div>
           </div>
         </div>
-        
-        {/* Footer Text */}
-        <div className="text-center mt-6 text-white text-sm opacity-80">
-          <p>Serving at the Altar of the Lord</p>
-          <p className="text-xs mt-1 opacity-60">© 2026 Ministry of Altar Servers</p>
+
+        {/* Member Login Link */}
+        <div className="mt-6 text-center">
+          <Link 
+            href="/member/login" 
+            className="text-white/80 text-sm hover:text-white transition-colors"
+          >
+            → Member Login Portal
+          </Link>
+        </div>
+
+        {/* Back to Home */}
+        <div className="mt-2 text-center">
+          <Link 
+            href="/" 
+            className="text-white/60 text-xs hover:text-white/80 transition-colors"
+          >
+            ← Back to Home
+          </Link>
         </div>
       </div>
-
-      {/* Custom CSS Animations */}
-      <style jsx>{`
-        @keyframes gradientShift {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-        
-        @keyframes float-slow {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(3deg); }
-        }
-        
-        @keyframes float-medium {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-15px) rotate(-2deg); }
-        }
-        
-        @keyframes float-fast {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-10px) rotate(2deg); }
-        }
-        
-        @keyframes twinkle {
-          0%, 100% { opacity: 0.3; transform: scale(0.8); }
-          50% { opacity: 1; transform: scale(1.2); }
-        }
-        
-        .animate-float-slow {
-          animation: float-slow 8s ease-in-out infinite;
-        }
-        
-        .animate-float-medium {
-          animation: float-medium 6s ease-in-out infinite;
-        }
-        
-        .animate-float-fast {
-          animation: float-fast 4s ease-in-out infinite;
-        }
-        
-        .animate-twinkle {
-          animation: twinkle 2s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 }

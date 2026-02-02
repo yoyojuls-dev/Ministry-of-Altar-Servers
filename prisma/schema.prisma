@@ -1,6 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
+// Ministry of Altar Servers Management System - MongoDB Schema (CORRECTED)
 datasource db {
   provider = "mongodb"
   url      = env("DATABASE_URL")
@@ -10,14 +8,14 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// ===== SEPARATE USER MODELS =====
+// ===== USER MANAGEMENT MODELS =====
 
-// Admin User Model
+// Admin/Ministry Leader Model
 model AdminUser {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  adminId       String?  @unique // Admin ID
-  name          String?
-  birthdate     DateTime? // Birthdate
+  adminId       String?  @unique
+  name          String
+  birthdate     DateTime?
   email         String?  @unique
   emailVerified DateTime?
   image         String?
@@ -27,23 +25,25 @@ model AdminUser {
   role          Role     @default(ADMIN)
   
   // Admin-specific fields
-  permissions   String[] // e.g., ["manage_users", "manage_thesis"]
-  college       String?  // College (Science, Fine Arts, etc.)
-  department    String?  // Department (Computer Studies, etc.)
-  position      String?  // e.g., "Department Head", "Admin Officer"
+  permissions   String[]
+  position      String?
+  contactNumber String?
+  isActive      Boolean  @default(true)
   
   // Relations
-  accounts          Account[]       @relation("AdminAccounts")
-  uploadedThesis    Thesis[]        @relation("UploadedBy")
-  approvedThesis    Thesis[]        @relation("ApprovedThesis")
+  accounts            Account[]       @relation("AdminAccounts")
+  createdMembers      Member[]        @relation("CreatedByAdmin")
+  createdEvents       Event[]         @relation("CreatedByAdmin")
+  attendanceRecords   Attendance[]    @relation("RecordedByAdmin")
+  financialRecords    FinancialRecord[] @relation("RecordedByAdmin")
 }
 
-// Student User Model  
-model StudentUser {
+// Altar Server Member Model
+model Member {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  studentId     String?  @unique // Student ID (Format: TUPM-YY-XXXX)
-  name          String?
-  birthdate     DateTime? // Birthdate
+  memberId      String   @unique // Member ID (e.g., "AS-001", "AS-002")
+  name          String
+  birthdate     DateTime
   email         String?  @unique
   emailVerified DateTime?
   image         String?
@@ -52,193 +52,249 @@ model StudentUser {
   updatedAt     DateTime @updatedAt
   role          Role     @default(USER)
   
-  // Student-specific fields
-  college       String?  // College (Science, Fine Arts, etc.)
-  department    String?  // Department (Computer Studies, etc.)
-  course        String?  // Course (Bachelor of Science in Computer Science)
+  // Member-specific fields
+  contactNumber String?
+  address       String?
+  parentGuardian String?
+  parentContact  String?
+  emergencyContact String?
+  emergencyNumber String?
+  
+  // Ministry Information
+  dateJoined    DateTime @default(now())
+  memberStatus  MemberStatus @default(ACTIVE)
+  serverLevel   ServerLevel @default(JUNIOR)
+  trainedFor    String[]
+  
+  // Additional Information
+  school        String?
+  occupation    String?
+  notes         String?
   
   // Relations
-  accounts          Account[]       @relation("StudentAccounts")
-  favorites         Favorite[]
-  downloads         Download[]
-  thesisRatings     ThesisRating[]
+  accounts            Account[]           @relation("MemberAccounts")
+  attendanceRecords   Attendance[]        @relation("MemberAttendance")
+  financialRecords    FinancialRecord[]   @relation("MemberFinances")
+  eventParticipation  EventParticipant[]  @relation("MemberParticipation")
+  createdBy           AdminUser           @relation("CreatedByAdmin", fields: [createdByUserId], references: [id])
+  createdByUserId     String              @db.ObjectId
+  
+  // Indexes (non-unique fields only)
+  @@index([memberStatus])
+  @@index([birthdate])
+  @@index([dateJoined])
 }
 
-// Account model to support both user types
+// Account model for authentication
 model Account {
   id                 String  @id @default(auto()) @map("_id") @db.ObjectId
   userId             String  @db.ObjectId
-  userType           UserType // Determines if admin or student
+  userType           UserType
   type               String
   provider           String
   providerAccountId  String
-  refresh_token      String?  @db.String
-  access_token       String?  @db.String
+  refresh_token      String?
+  access_token       String?
   expires_at         Int?
   token_type         String?
   scope              String?
-  id_token           String?  @db.String
+  id_token           String?
   session_state      String?
 
-  // Relations (conditional based on userType)
+  // Relations
   adminUser     AdminUser?   @relation("AdminAccounts", fields: [adminUserId], references: [id], onDelete: Cascade)
   adminUserId   String?      @db.ObjectId
   
-  studentUser   StudentUser? @relation("StudentAccounts", fields: [studentUserId], references: [id], onDelete: Cascade)
-  studentUserId String?      @db.ObjectId
+  member        Member?      @relation("MemberAccounts", fields: [memberId], references: [id], onDelete: Cascade)
+  memberId      String?      @db.ObjectId
 
   @@unique([provider, providerAccountId])
 }
 
-// ===== THESIS MANAGEMENT MODELS =====
+// ===== ATTENDANCE MANAGEMENT MODELS =====
 
-model Thesis {
+model Attendance {
   id String @id @default(auto()) @map("_id") @db.ObjectId
-  title String
-  abstract String
-  fullContent String? // Optional - for future use when content is needed
   
-  // Author Information
-  authorName String // Can contain multiple authors separated by commas
-  authorEmail String?
-  studentId String?
+  // Member Information
+  memberId String @db.ObjectId
+  member   Member @relation("MemberAttendance", fields: [memberId], references: [id], onDelete: Cascade)
   
-  // Academic Information
-  advisorName String
-  coAdvisorName String?
-  committeeMembers String[] // Array of committee member names
-  department String
-  program String // e.g., "Bachelor of Science in Computer Science"
-  university String @default("Technological University of the Philippines - Manila")
-  degreeLevel DegreeLevel
+  // Event/Service Information
+  eventType    AttendanceType
+  eventDate    DateTime
+  serviceTime  String?
   
-  // Thesis Details
-  categoryId String @db.ObjectId
-  keywords String[] // Array of keywords
-  language String @default("English")
+  // Attendance Details
+  status       AttendanceStatus @default(PRESENT)
+  arrivalTime  DateTime?
+  notes        String?
   
-  // File Storage
-  pdfUrl String? // URL to stored PDF file
-  coverImageUrl String? // URL to cover/thumbnail image
+  // Record Information
+  recordedBy   AdminUser @relation("RecordedByAdmin", fields: [recordedByUserId], references: [id])
+  recordedByUserId String @db.ObjectId
+  recordedAt   DateTime @default(now())
+  updatedAt    DateTime @updatedAt
   
-  // Content Structure
-  references String[] // Array of references/bibliography
-  acknowledgments String?
+  @@index([memberId])
+  @@index([eventDate])
+  @@index([eventType])
+  @@index([status])
+}
+
+// ===== EVENT MANAGEMENT MODELS =====
+
+model Event {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
   
-  // ===== NEW: CHAPTER CONTENT FIELDS =====
-  chapter1 String? @db.String // Chapter 1: Introduction
-  chapter2 String? @db.String // Chapter 2: Review of Related Literature
-  chapter3 String? @db.String // Chapter 3: Methodology
-  chapter4 String? @db.String // Chapter 4: Results and Discussion
-  chapter5 String? @db.String // Chapter 5: Summary, Conclusion, Recommendations
-  referencesText String? @db.String // References/Bibliography (full text)
-  appendices String? @db.String // Appendices (full text)
+  // Event Details
+  title         String
+  description   String?
+  eventType     EventType
+  date          DateTime
+  startTime     String
+  endTime       String?
+  location      String?
   
-  // Dates
-  submissionDate DateTime
-  approvalDate DateTime?
-  defenseDate DateTime?
-  publicationYear Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  // Event Configuration
+  requiresAttendance Boolean @default(true)
+  maxParticipants    Int?
+  minServerLevel     ServerLevel?
   
-  // Status and Approval
-  status ThesisStatus @default(PENDING)
-  approvedByAdminId String? @db.ObjectId // Admin who approved
-  rejectionReason String?
+  // Status and Management
+  status        EventStatus @default(SCHEDULED)
+  notes         String?
   
-  // Statistics
-  downloadCount Int @default(0)
-  viewCount Int @default(0)
-  averageRating Float @default(0)
-  totalRatings Int @default(0)
-  
-  // Metadata
-  citation String? // Auto-generated citation
-  digitalLibraryId String? @unique // Unique identifier for digital library
+  // Record Information
+  createdBy     AdminUser @relation("CreatedByAdmin", fields: [createdByUserId], references: [id])
+  createdByUserId String @db.ObjectId
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
   
   // Relations
-  category Category @relation(fields: [categoryId], references: [id])
-  uploadedBy AdminUser @relation("UploadedBy", fields: [uploadedByUserId], references: [id])
-  uploadedByUserId String @db.ObjectId
-  approvedByAdmin AdminUser? @relation("ApprovedThesis", fields: [approvedByAdminId], references: [id])
+  participants  EventParticipant[]
   
-  favorites Favorite[]
-  downloads Download[]
-  ratings ThesisRating[]
-  
-  @@index([categoryId])
+  @@index([date])
+  @@index([eventType])
   @@index([status])
-  @@index([submissionDate])
-  @@index([authorName])
-  @@index([title])
-  @@index([publicationYear])
 }
 
-// Category model for organizing thesis
-model Category {
+model EventParticipant {
   id String @id @default(auto()) @map("_id") @db.ObjectId
-  name String @unique // e.g., "Computer Science", "Information Technology"
-  description String?
-  code String @unique // e.g., "CS", "IT", "IS", "DA"
-  color String @default("#ef4444") // For UI theming (red color)
-  isActive Boolean @default(true)
+  
+  eventId  String @db.ObjectId
+  event    Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  
+  memberId String @db.ObjectId
+  member   Member @relation("MemberParticipation", fields: [memberId], references: [id], onDelete: Cascade)
+  
+  // Participation Details
+  role     String?
+  status   ParticipationStatus @default(REGISTERED)
+  notes    String?
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
-  thesis Thesis[]
-  
-  @@index([isActive])
+  @@index([eventId])
+  @@index([memberId])
 }
 
-// Favorite model for students to save thesis
-model Favorite {
+// ===== FINANCIAL MANAGEMENT MODELS =====
+
+model FinancialRecord {
   id String @id @default(auto()) @map("_id") @db.ObjectId
-  userId String @db.ObjectId
-  thesisId String @db.ObjectId
-  createdAt DateTime @default(now())
   
-  user StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
-  thesis Thesis @relation(fields: [thesisId], references: [id], onDelete: Cascade)
+  // Transaction Details
+  type          TransactionType
+  amount        Float
+  description   String
+  category      String?
   
-  @@unique([userId, thesisId])
-  @@index([userId])
-  @@index([thesisId])
+  // Member Association
+  memberId      String? @db.ObjectId
+  member        Member? @relation("MemberFinances", fields: [memberId], references: [id])
+  
+  // Payment Details
+  paymentMethod String?
+  referenceNumber String?
+  
+  // Date Information
+  transactionDate DateTime
+  dueDate       DateTime?
+  
+  // Status
+  status        PaymentStatus @default(PENDING)
+  notes         String?
+  
+  // Record Information
+  recordedBy    AdminUser @relation("RecordedByAdmin", fields: [recordedByUserId], references: [id])
+  recordedByUserId String @db.ObjectId
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([type])
+  @@index([transactionDate])
+  @@index([memberId])
+  @@index([status])
 }
 
-// Download tracking model
-model Download {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
-  userId String @db.ObjectId
-  thesisId String @db.ObjectId
-  downloadedAt DateTime @default(now())
-  ipAddress String?
-  userAgent String?
-  
-  user StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
-  thesis Thesis @relation(fields: [thesisId], references: [id], onDelete: Cascade)
-  
-  @@index([thesisId])
-  @@index([userId])
-  @@index([downloadedAt])
-}
+// ===== MINISTRY SETTINGS AND CONFIGURATION =====
 
-// Thesis rating model
-model ThesisRating {
+model MinistrySettings {
   id String @id @default(auto()) @map("_id") @db.ObjectId
-  userId String @db.ObjectId
-  thesisId String @db.ObjectId
-  rating Int // 1-5 stars
-  comment String?
+  
+  // General Settings
+  ministryName    String @default("Ministry of Altar Servers")
+  parishName      String?
+  contactEmail    String?
+  contactNumber   String?
+  
+  // Dues Configuration
+  monthlyDuesAmount Float @default(0)
+  duesDescription   String?
+  
+  // Attendance Settings
+  attendanceGracePeriod Int @default(15)
+  
+  // Notification Settings
+  birthdayReminders     Boolean @default(true)
+  eventReminders        Boolean @default(true)
+  duesReminders         Boolean @default(true)
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ===== NOTIFICATION SYSTEM =====
+
+model Notification {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
   
-  user StudentUser @relation(fields: [userId], references: [id], onDelete: Cascade)
-  thesis Thesis @relation(fields: [thesisId], references: [id], onDelete: Cascade)
+  // Notification Details
+  title       String
+  message     String
+  type        NotificationType
+  priority    Priority @default(NORMAL)
   
-  @@unique([userId, thesisId])
-  @@index([thesisId])
-  @@index([rating])
+  // Target
+  targetType  TargetType
+  targetId    String? @db.ObjectId
+  
+  // Status
+  isRead      Boolean @default(false)
+  readAt      DateTime?
+  
+  // Schedule
+  scheduledFor DateTime?
+  sentAt      DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([targetType])
+  @@index([type])
+  @@index([createdAt])
 }
 
 // ===== ENUMS =====
@@ -250,20 +306,103 @@ enum Role {
 
 enum UserType {
   ADMIN
-  STUDENT
+  MEMBER
 }
 
-enum ThesisStatus {
-  PENDING      // Waiting for admin approval
-  APPROVED     // Approved and published
-  REJECTED     // Rejected by admin
-  DRAFT        // Draft state (not submitted)
-  ARCHIVED     // Archived thesis
+enum MemberStatus {
+  ACTIVE
+  INACTIVE
+  GRADUATED
+  TRANSFERRED
+  SUSPENDED
 }
 
-enum DegreeLevel {
-  BACHELOR     // Bachelor's degree
-  MASTER       // Master's degree  
-  DOCTORATE    // PhD/Doctoral degree
-  DIPLOMA      // Diploma programs
+enum ServerLevel {
+  JUNIOR
+  SENIOR
+  MASTER
+}
+
+enum AttendanceType {
+  SUNDAY_MASS
+  DAILY_MASS
+  MONTHLY_MEETING
+  SPECIAL_EVENT
+  TRAINING
+  RETREAT
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
+  LATE
+  EARLY_DEPARTURE
+}
+
+enum EventType {
+  SUNDAY_MASS
+  DAILY_MASS
+  SPECIAL_MASS
+  HOLY_DAY
+  RETREAT
+  TRAINING
+  MEETING
+  SOCIAL_EVENT
+  COMMUNITY_SERVICE
+}
+
+enum EventStatus {
+  SCHEDULED
+  ONGOING
+  COMPLETED
+  CANCELLED
+  POSTPONED
+}
+
+enum ParticipationStatus {
+  REGISTERED
+  CONFIRMED
+  ATTENDED
+  ABSENT
+  CANCELLED
+}
+
+enum TransactionType {
+  DUES
+  DONATION
+  EXPENSE
+  COLLECTION
+  PENALTY
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+  REFUNDED
+}
+
+enum NotificationType {
+  BIRTHDAY
+  EVENT_REMINDER
+  DUES_REMINDER
+  ANNOUNCEMENT
+  SCHEDULE_CHANGE
+  URGENT
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TargetType {
+  ALL_MEMBERS
+  SPECIFIC_MEMBER
+  ADMINS_ONLY
+  ACTIVE_MEMBERS_ONLY
 }
