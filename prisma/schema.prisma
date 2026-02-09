@@ -1,4 +1,4 @@
-// Ministry of Altar Servers Management System - MongoDB Schema (CORRECTED)
+// Ministry of Altar Servers Management System - MongoDB Schema (UPDATED with Surname/GivenName)
 datasource db {
   provider = "mongodb"
   url      = env("DATABASE_URL")
@@ -41,8 +41,11 @@ model AdminUser {
 // Altar Server Member Model
 model Member {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  memberId      String   @unique // Member ID (e.g., "AS-001", "AS-002")
-  name          String
+  
+  // Name fields (UPDATED)
+  surname       String   // Last name (e.g., "Dela Cruz")
+  givenName     String   // First/given names (e.g., "Juan" or "Maria Clara")
+  
   birthdate     DateTime
   email         String?  @unique
   emailVerified DateTime?
@@ -76,6 +79,7 @@ model Member {
   attendanceRecords   Attendance[]        @relation("MemberAttendance")
   financialRecords    FinancialRecord[]   @relation("MemberFinances")
   eventParticipation  EventParticipant[]  @relation("MemberParticipation")
+  officers            Officer[]           @relation("MemberOfficer")
   createdBy           AdminUser           @relation("CreatedByAdmin", fields: [createdByUserId], references: [id])
   createdByUserId     String              @db.ObjectId
   
@@ -83,6 +87,7 @@ model Member {
   @@index([memberStatus])
   @@index([birthdate])
   @@index([dateJoined])
+  @@index([surname])
 }
 
 // Account model for authentication
@@ -264,6 +269,26 @@ model MinistrySettings {
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ===== OFFICER MANAGEMENT =====
+
+model Officer {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  
+  memberId String @db.ObjectId
+  member   Member @relation("MemberOfficer", fields: [memberId], references: [id], onDelete: Cascade)
+  
+  position String
+  dateAppointed DateTime
+  isActive Boolean @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([memberId])
+  @@index([position])
+  @@index([isActive])
 }
 
 // ===== NOTIFICATION SYSTEM =====

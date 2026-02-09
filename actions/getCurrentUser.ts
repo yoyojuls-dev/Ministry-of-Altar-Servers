@@ -1,9 +1,8 @@
-// actions/getCurrentUser.ts - Fixed with proper Prisma import
+// actions/getCurrentUser.ts
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { PrismaClient } from "@prisma/client";
 
-// Create Prisma client instance
 const prisma = globalThis.prisma || new PrismaClient();
 if (process.env.NODE_ENV === 'development') {
   globalThis.prisma = prisma;
@@ -56,8 +55,8 @@ export default async function getCurrentUser() {
         },
         select: {
           id: true,
-          memberId: true,
-          name: true,
+          surname: true,
+          givenName: true,
           email: true,
           image: true,
           role: true,
@@ -97,32 +96,7 @@ export async function isUserAdmin(email: string): Promise<boolean> {
       select: { id: true, isActive: true },
     });
     return adminUser?.isActive ?? false;
-  } catch (error) {
-    console.error("Error checking admin status:", error);
+  } catch {
     return false;
-  }
-}
-
-// Helper function to get user type
-export async function getUserType(email: string): Promise<'ADMIN' | 'MEMBER' | null> {
-  try {
-    const adminUser = await prisma.adminUser.findUnique({
-      where: { email },
-      select: { id: true },
-    });
-
-    if (adminUser) return 'ADMIN';
-
-    const member = await prisma.member.findUnique({
-      where: { email },
-      select: { id: true },
-    });
-
-    if (member) return 'MEMBER';
-
-    return null;
-  } catch (error) {
-    console.error("Error getting user type:", error);
-    return null;
   }
 }

@@ -9,7 +9,7 @@ async function main() {
   const name = "System Administrator";
 
   // Check if admin already exists
-  const existing = await prisma.adminUser.findUnique({
+  const existing = await prisma.user.findUnique({
     where: { email },
   });
 
@@ -20,15 +20,12 @@ async function main() {
 
   // Create admin
   const hashedPassword = await bcrypt.hash(password, 10);
-  const admin = await prisma.adminUser.create({
+  const admin = await prisma.user.create({
     data: {
       name,
       email,
       hashedPassword,
       role: "ADMIN",
-      department: "Computer Studies",
-      position: "System Administrator",
-      permissions: ["manage_all"],
     },
   });
 
