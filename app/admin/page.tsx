@@ -1,11 +1,10 @@
-// app/admin/page.tsx - Updated Admin Dashboard with notification bell and MAS logo
+// app/admin/page.tsx - Updated to match mobile design
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import toast from "react-hot-toast";
 
 interface Notification {
@@ -23,6 +22,7 @@ export default function AdminDashboard() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     if (status === "authenticated" && session?.user?.userType !== "ADMIN") {
@@ -35,47 +35,31 @@ export default function AdminDashboard() {
       return;
     }
 
-    // Load sample data
     loadSampleData();
   }, [session, status, router]);
 
   const loadSampleData = () => {
-    // Sample notifications
     const sampleNotifications: Notification[] = [
       {
         id: "1",
-        message: "Monthly Meeting on February 1st, 2026 (Sunday - 1pm & 2pm Purpose Hall)",
+        message: "Monthly Meeting on February 1st, 2026 (Sunday - 1pm @ Multi-Purpose Hall)",
         type: "reminder",
         timestamp: new Date("2026-01-31"),
         isRead: false
       },
       {
         id: "2",
-        message: "Birthday of Juan Cruz",
+        message: "Birthday of User User",
         type: "update",
         timestamp: new Date("2026-01-30"),
         isRead: false
       },
       {
         id: "3",
-        message: "New member John Santos has been added",
+        message: "New member added to altar servers",
         type: "change",
         timestamp: new Date("2026-01-29"),
-        isRead: true
-      },
-      {
-        id: "4",
-        message: "Sunday Mass attendance updated",
-        type: "update",
-        timestamp: new Date("2026-01-28"),
         isRead: false
-      },
-      {
-        id: "5",
-        message: "Maria Cruz completed altar server training",
-        type: "change",
-        timestamp: new Date("2026-01-27"),
-        isRead: true
       }
     ];
     
@@ -93,298 +77,347 @@ export default function AdminDashboard() {
   };
 
   const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(n => ({ ...n, isRead: true }))
-    );
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     setUnreadCount(0);
   };
 
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'reminder':
-        return '📅';
-      case 'update':
-        return '🔄';
-      case 'change':
-        return '✨';
-      default:
-        return '🔔';
-    }
-  };
-
-  const formatTimestamp = (timestamp: Date) => {
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - timestamp.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    return timestamp.toLocaleDateString();
+  const handleLogout = async () => {
+    toast.success("Logging out...");
+    await signOut({ redirect: true, callbackUrl: "/" });
   };
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm px-6 py-4">
-        <div className="flex items-center justify-between">
-          {/* Left - Notification Bell and Welcome */}
-          <div className="flex items-center space-x-4">
-            {/* Notification Bell */}
-            <div className="relative">
-              <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-700 transition-colors relative"
-              >
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-                {unreadCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </button>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 relative overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-500 rounded-full blur-3xl"></div>
+      </div>
 
-              {/* Notifications Dropdown */}
-              {showNotifications && (
-                <div className="absolute top-12 left-0 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
-                  <div className="p-4 border-b border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
-                      <button
-                        onClick={markAllAsRead}
-                        className="text-blue-600 text-sm font-medium hover:text-blue-700"
-                      >
-                        Mark all read
-                      </button>
-                    </div>
-                  </div>
-                  <div className="max-h-96 overflow-y-auto">
-                    {notifications.map((notification) => (
-                      <div
-                        key={notification.id}
-                        className={`p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
-                          !notification.isRead ? 'bg-blue-50' : ''
-                        }`}
-                        onClick={() => markAsRead(notification.id)}
-                      >
-                        <div className="flex items-start space-x-3">
-                          <span className="text-lg">{getNotificationIcon(notification.type)}</span>
-                          <div className="flex-1">
-                            <p className="text-sm text-gray-900">{notification.message}</p>
-                            <p className="text-xs text-gray-500 mt-1">{formatTimestamp(notification.timestamp)}</p>
-                          </div>
-                          {!notification.isRead && (
-                            <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2"></div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+      {/* LOGOs.png Background Image */}
+      <div className="absolute inset-0 opacity-10">
+        <img 
+          src="/images/LOGOs.png" 
+          alt="Background Pattern" 
+          className="w-full h-full object-cover"
+        />
+      </div>
+
+      {/* Main Content */}
+      <div className="relative z-10 px-4 py-6 max-w-md mx-auto">
+        {/* Header Section */}
+        <div className="flex items-start justify-between mb-8">
+          {/* Notification Bell Icon */}
+          <button
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="relative bg-white p-3 rounded-xl shadow-md hover:shadow-lg transition-shadow"
+          >
+            <div className="relative">
+              <svg className="w-6 h-6 text-blue-900" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+              </svg>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                  {unreadCount}
+                </span>
               )}
             </div>
+          </button>
 
-            {/* Welcome Text */}
-            <div>
-              <p className="text-sm text-gray-500">Welcome back!</p>
-              <h1 className="text-xl font-semibold text-gray-900">
-                {session?.user?.name || 'Admin Admin'}
-              </h1>
-            </div>
-          </div>
-
-          {/* Right - MAS Logo */}
-          <div className="flex items-center space-x-4">
-            <div className="relative w-16 h-12">
-              <Image
-                src="/images/MAS LOGO.png"
-                alt="Ministry of Altar Servers Logo"
-                fill
-                sizes="64px"
-                className="object-contain"
-                priority
+          {/* Logo */}
+          <div className="flex items-center">
+            <div className="relative w-14 h-14 flex items-center justify-center">
+              <img 
+                src="/images/MAS LOGO.png" 
+                alt="MAS Logo" 
+                className="w-full h-full object-contain"
               />
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Close notifications when clicking outside */}
-      {showNotifications && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setShowNotifications(false)}
-        ></div>
-      )}
-
-      {/* Main Content */}
-      <div className="p-6">
-        {/* Search Bar */}
-        <div className="relative mb-6">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          <input
-            type="text"
-            placeholder="Search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-          />
+        {/* Welcome Text */}
+        <div className="mb-6">
+          <p className="text-gray-500 text-sm mb-1">Welcome back!</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {session?.user?.name || "Admin Admin"}
+          </h1>
         </div>
 
-        {/* User Management Icons */}
-        <div className="flex justify-end space-x-3 mb-6">
-          <Link
-            href="/admin/profile"
-            className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-700 transition-colors"
-          >
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        {/* Search Bar and Action Buttons - All in one row */}
+        <div className="flex items-center gap-3 mb-6">
+          {/* Search Bar */}
+          <div className="relative flex-1">
+            <input
+              type="text"
+              placeholder="Search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 bg-white rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-base"
+            />
+            <svg
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
-          </Link>
+          </div>
+
+          {/* User Management Button */}
           <Link
             href="/admin/members"
-            className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center hover:bg-blue-700 transition-colors"
+            className="bg-blue-900 p-3 rounded-xl shadow-md hover:shadow-lg transition-all hover:scale-105 flex-shrink-0"
           >
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m9 5.197v0M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+            </svg>
+          </Link>
+
+          {/* Profile/Birthday Button */}
+          <Link
+            href="/admin/birthdays"
+            className="bg-blue-900 p-3 rounded-xl shadow-md hover:shadow-lg transition-all hover:scale-105 flex-shrink-0"
+          >
+            <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M6 3a1 1 0 011-1h.01a1 1 0 010 2H7a1 1 0 01-1-1zm2 3a1 1 0 00-2 0v1a2 2 0 00-2 2v1a2 2 0 00-2 2v.683a3.7 3.7 0 011.055.485 1.704 1.704 0 001.89 0 3.704 3.704 0 014.11 0 1.704 1.704 0 001.89 0 3.704 3.704 0 014.11 0 1.704 1.704 0 001.89 0A3.7 3.7 0 0118 12.683V12a2 2 0 00-2-2V9a2 2 0 00-2-2V6a1 1 0 10-2 0v1h-1V6a1 1 0 10-2 0v1H8V6zm10 8.868a3.704 3.704 0 01-4.055-.036 1.704 1.704 0 00-1.89 0 3.704 3.704 0 01-4.11 0 1.704 1.704 0 00-1.89 0A3.704 3.704 0 012 14.868V17a1 1 0 001 1h14a1 1 0 001-1v-2.132zM9 3a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1zm3 0a1 1 0 011-1h.01a1 1 0 110 2H13a1 1 0 01-1-1z" clipRule="evenodd" />
             </svg>
           </Link>
         </div>
 
-        {/* Main Dashboard Cards */}
+        {/* Main Action Cards Grid */}
         <div className="grid grid-cols-2 gap-4 mb-6">
-          {/* Monthly Meeting */}
+          {/* Monthly Meeting Card */}
           <Link
             href="/admin/monthly-meeting"
-            className="bg-gradient-to-br from-orange-400 to-orange-500 p-6 rounded-2xl text-white hover:from-orange-500 hover:to-orange-600 transition-all transform hover:scale-105 shadow-lg"
+            className="group bg-gradient-to-br from-orange-400 to-orange-500 rounded-3xl p-5 shadow-lg hover:shadow-xl transition-all hover:scale-105 transform"
           >
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            <div className="flex items-start mb-3">
+              <div className="bg-white bg-opacity-30 p-2 rounded-lg">
+                <svg className="w-6 h-6 text-orange-900" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
                 </svg>
               </div>
-              <span className="text-xs bg-white/20 px-2 py-1 rounded-full">1st Sunday of the Month</span>
             </div>
-            <h3 className="text-lg font-bold mb-1">Monthly</h3>
-            <h3 className="text-lg font-bold">Meeting</h3>
+            <p className="text-xs text-orange-900 mb-1 font-medium">1st Sunday of the Month</p>
+            <h3 className="text-xl font-bold text-gray-900 leading-tight">Monthly<br/>Meeting</h3>
           </Link>
 
-          {/* Sunday Groups */}
+          {/* Sunday Groups Card */}
           <Link
-            href="/admin/sunday-groups"
-            className="bg-white p-6 rounded-2xl hover:shadow-xl transition-all transform hover:scale-105 shadow-lg border border-gray-100"
+            href="/admin/sunday-service"
+            className="group bg-white rounded-3xl p-5 shadow-lg hover:shadow-xl transition-all hover:scale-105 transform border-2 border-gray-100"
           >
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            <div className="flex items-start mb-3">
+              <div className="bg-gray-100 p-2 rounded-lg">
+                <svg className="w-6 h-6 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
                 </svg>
               </div>
-              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">Sunday Service</span>
             </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Sunday</h3>
-            <h3 className="text-lg font-bold text-gray-900">Groups</h3>
+            <p className="text-xs text-gray-600 mb-1 font-medium">Sunday Service</p>
+            <h3 className="text-xl font-bold text-gray-900 leading-tight">Sunday<br/>Groups</h3>
           </Link>
 
-          {/* Daily Masses */}
+          {/* Daily Masses Card */}
           <Link
-            href="/admin/daily-masses"
-            className="bg-white p-6 rounded-2xl hover:shadow-xl transition-all transform hover:scale-105 shadow-lg border border-gray-100"
+            href="/admin/daily-attendance"
+            className="group bg-white rounded-3xl p-5 shadow-lg hover:shadow-xl transition-all hover:scale-105 transform border-2 border-gray-100"
           >
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <div className="flex items-start mb-3">
+              <div className="bg-gray-100 p-2 rounded-lg">
+                <svg className="w-6 h-6 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
                 </svg>
               </div>
-              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">Daily Attendance</span>
             </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Daily</h3>
-            <h3 className="text-lg font-bold text-gray-900">Masses</h3>
+            <p className="text-xs text-gray-600 mb-1 font-medium">Daily Attendance</p>
+            <h3 className="text-xl font-bold text-gray-900 leading-tight">Daily<br/>Masses</h3>
           </Link>
 
-          {/* Event Tracker */}
+          {/* Event Tracker Card */}
           <Link
             href="/admin/events"
-            className="bg-white p-6 rounded-2xl hover:shadow-xl transition-all transform hover:scale-105 shadow-lg border border-gray-100"
+            className="group bg-white rounded-3xl p-5 shadow-lg hover:shadow-xl transition-all hover:scale-105 transform border-2 border-gray-100"
           >
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 00-2-2z" />
+            <div className="flex items-start mb-3">
+              <div className="bg-gray-100 p-2 rounded-lg">
+                <svg className="w-6 h-6 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
                 </svg>
               </div>
-              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">Event List</span>
             </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Event</h3>
-            <h3 className="text-lg font-bold text-gray-900">Tracker</h3>
+            <p className="text-xs text-gray-600 mb-1 font-medium">Event List</p>
+            <h3 className="text-xl font-bold text-gray-900 leading-tight">Event<br/>Tracker</h3>
           </Link>
         </div>
 
-        {/* Upcoming Notifications */}
-        <div className="bg-gradient-to-r from-red-400 to-red-500 rounded-2xl p-4 mb-6 shadow-lg">
-          <div className="flex items-center mb-3">
-            <span className="bg-white text-red-500 px-2 py-1 rounded-full text-xs font-semibold mr-2">!</span>
-            <h3 className="text-white font-semibold">UPCOMING</h3>
+        {/* Upcoming Events Section */}
+        <div className="bg-gradient-to-r from-red-400 to-pink-400 rounded-3xl p-5 shadow-lg mb-20">
+          <div className="flex items-start mb-3">
+            <svg className="w-5 h-5 text-red-900 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            <h3 className="text-sm font-bold text-red-900 uppercase tracking-wide">Upcoming</h3>
           </div>
+          
           <div className="space-y-2">
-            <div className="text-white text-sm flex items-start">
-              <div className="w-1.5 h-1.5 bg-white rounded-full mr-2 mt-2 flex-shrink-0"></div>
-              <span>Monthly Meeting on February 1st, 2026 (Sunday - 1pm & 2pm Purpose Hall)</span>
-            </div>
-            <div className="text-white text-sm flex items-start">
-              <div className="w-1.5 h-1.5 bg-white rounded-full mr-2 mt-2 flex-shrink-0"></div>
-              <span>Birthday of Juan Cruz</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom Navigation */}
-        <div className="bg-blue-800 rounded-2xl p-4">
-          <div className="flex justify-center space-x-8">
-            <Link
-              href="/admin"
-              className="flex flex-col items-center text-white hover:text-blue-200 transition-colors"
-            >
-              <svg className="w-6 h-6 mb-1" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
-              </svg>
-              <span className="text-xs">Home</span>
-            </Link>
-            <Link
-              href="/admin/messages"
-              className="flex flex-col items-center text-white/70 hover:text-white transition-colors"
-            >
-              <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-              <span className="text-xs">Messages</span>
-            </Link>
-            <Link
-              href="/admin/birthdays"
-              className="flex flex-col items-center text-white/70 hover:text-white transition-colors"
-            >
-              <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m9 5.197v0M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-              <span className="text-xs">Birthdays</span>
-            </Link>
+            {notifications.slice(0, 2).map((notification) => (
+              <div key={notification.id} className="flex items-start">
+                <span className="text-red-900 mr-2 mt-0.5">•</span>
+                <p className="text-sm text-gray-900">{notification.message}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
+
+      {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 z-20">
+        <div className="max-w-md mx-auto px-4 pb-4">
+          <div className="bg-blue-900 rounded-full shadow-2xl">
+            <div className="flex items-center justify-around py-4 px-6">
+              <Link
+                href="/admin"
+                className="flex flex-col items-center group"
+              >
+                <svg className="w-7 h-7 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                </svg>
+              </Link>
+
+              <Link
+                href="/admin/attendance"
+                className="flex flex-col items-center group"
+              >
+                <svg className="w-7 h-7 text-white group-hover:text-yellow-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+              </Link>
+
+              <button
+                onClick={() => setShowLogoutConfirm(true)}
+                className="flex flex-col items-center group hover:scale-110 transition-transform"
+              >
+                <svg className="w-7 h-7 text-white group-hover:text-red-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Notifications Panel */}
+      {showNotifications && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-center pt-20">
+          <div className="bg-white rounded-2xl max-w-md w-full mx-4 shadow-2xl max-h-[70vh] overflow-hidden flex flex-col">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900">Notifications</h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={markAllAsRead}
+                  className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Mark all as read
+                </button>
+                <button
+                  onClick={() => setShowNotifications(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <div className="overflow-y-auto flex-1">
+              {notifications.length === 0 ? (
+                <div className="p-8 text-center">
+                  <p className="text-gray-500">No notifications</p>
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {notifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`p-4 hover:bg-gray-50 cursor-pointer ${
+                        !notification.isRead ? 'bg-blue-50' : ''
+                      }`}
+                      onClick={() => markAsRead(notification.id)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                          !notification.isRead ? 'bg-blue-600' : 'bg-gray-300'
+                        }`} />
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-900">{notification.message}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {notification.timestamp.toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm mx-4 overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center justify-center mb-4">
+                <svg className="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4v2m0 0v2m0-6V9m0 0l4.243-4.243m0 0v8.486m0-8.486l-8.486 8.486" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 text-center mb-2">
+                Confirm Logout
+              </h3>
+              <p className="text-sm text-gray-600 text-center mb-6">
+                Are you sure you want to logout? You will need to login again to access the admin panel.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-900 font-medium rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowLogoutConfirm(false);
+                    handleLogout();
+                  }}
+                  className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-colors"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

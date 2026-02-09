@@ -1,4 +1,4 @@
-// app/admin/members/page.tsx - Updated with simplified officers and admin tabs
+// app/admin/members/page.tsx - Updated with surname and givenName
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,8 +8,8 @@ import toast from "react-hot-toast";
 
 interface Member {
   id: string;
-  memberId: string;
-  name: string;
+  surname: string;
+  givenName: string;
   email: string;
   birthdate: string;
   age: number;
@@ -48,6 +48,20 @@ interface RemoveConfirmation {
   member: Member | null;
 }
 
+// Helper function to format name as "Surname, I."
+const formatMemberName = (surname: string, givenName: string) => {
+  const initials = givenName
+    .split(' ')
+    .map(name => name.charAt(0).toUpperCase())
+    .join('.');
+  return `${surname}, ${initials}.`;
+};
+
+// Helper function to get full name
+const getFullName = (surname: string, givenName: string) => {
+  return `${givenName} ${surname}`;
+};
+
 type TabType = 'members' | 'officers' | 'admins';
 
 const OFFICER_POSITIONS = [
@@ -63,7 +77,8 @@ const OFFICER_POSITIONS = [
   'Social Media Committee',
   'Formation Committee',
   'Morning Cluster Head',
-  'Afternoon Cluster Head'
+  'Afternoon Cluster Head',
+  'Leader'
 ];
 
 export default function UserManagement() {
@@ -81,7 +96,8 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [memberFormData, setMemberFormData] = useState({
-    name: "",
+    surname: "",
+    givenName: "",
     birthday: "",
     address: "",
     parentContact: "",
@@ -111,75 +127,44 @@ export default function UserManagement() {
   };
 
   const loadMembers = async () => {
-    try {
-      console.log("Loading members from API...");
-      const response = await fetch("/api/members");
-      
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log("Members loaded successfully:", data.members.length);
-      
-      // Only show members from database - no sample data
-      setMembers(data.members || []);
-    } catch (error) {
-      console.error("Error loading members:", error);
-      toast.error("Failed to load members from database");
-      // Set empty array instead of sample data
-      setMembers([]);
+  try {
+    console.log("Loading members from API...");
+    const response = await fetch("/api/members?status=ACTIVE");
+    
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status}`);
     }
-  };
+    
+    const data = await response.json();
+    console.log("Members loaded:", data);
+    
+    // Map members data and add calculated fields
+    const membersWithCalculatedFields = data.map((member: any) => {
+      const age = member.birthdate ? calculateAge(member.birthdate) : 0;
+      const yearsOfService = member.dateJoined ? calculateYearsOfService(member.dateJoined) : 0;
+      
+      return {
+        ...member,
+        age,
+        yearsOfService,
+        serviceLevel: member.serverLevel || determineServiceLevel(yearsOfService)
+      };
+    });
+    
+    setMembers(membersWithCalculatedFields);
+  } catch (error) {
+    console.error("Error loading members:", error);
+    toast.error("Failed to load members from database");
+    setMembers([]);
+  }
+};
 
   const loadOfficers = async () => {
-    // Sample officers data - would come from API in real app
-    setOfficers([
-      // {
-      //   id: "officer-1",
-      //   memberId: "sample-3",
-      //   memberName: "Rodriguez, P",
-      //   position: "President",
-      //   email: "pedro@ministry.local",
-      //   contactNumber: "+63 918 111 2222",
-      //   dateAppointed: "2024-01-15",
-      //   isActive: true
-      // },
-      // {
-      //   id: "officer-2", 
-      //   memberId: "sample-4",
-      //   memberName: "Garcia, L",
-      //   position: "Vice President",
-      //   email: "luis@ministry.local",
-      //   contactNumber: "+63 919 333 4444",
-      //   dateAppointed: "2024-01-15",
-      //   isActive: true
-      // }
-    ]);
+    setOfficers([]);
   };
 
   const loadAdmins = async () => {
-    // Sample admins data
-    setAdmins([
-      // {
-      //   id: "admin-1",
-      //   adminId: "ADM-001",
-      //   name: "Father Martinez",
-      //   email: "fr.martinez@parish.com",
-      //   position: "Parish Priest",
-      //   contactNumber: "+63 920 555 6666",
-      //   createdAt: "2020-01-01"
-      // },
-      // {
-      //   id: "admin-2",
-      //   adminId: "ADM-002",
-      //   name: "Sister Catherine",
-      //   email: "sr.catherine@parish.com",
-      //   position: "Ministry Coordinator",
-      //   contactNumber: "+63 921 777 8888",
-      //   createdAt: "2020-06-15"
-      // }
-    ]);
+    setAdmins([]);
   };
 
   const calculateAge = (birthday: string): number => {
@@ -205,24 +190,28 @@ export default function UserManagement() {
   };
 
   const determineServiceLevel = (yearsOfService: number): 'Neophyte' | 'Junior' | 'Senior Server' => {
-    if (yearsOfService <= 2) return 'Neophyte';
-    if (yearsOfService <= 4) return 'Junior';
-    return 'Senior Server';
-  };
+  if (yearsOfService >= 1 && yearsOfService <= 2) return 'Neophyte';
+  if (yearsOfService >= 3 && yearsOfService <= 4) return 'Junior';
+  if (yearsOfService >= 5) return 'Senior Server';
+  return 'Neophyte'; // Default for 0 years
+};
 
   const getServiceLevelAbbreviation = (level: string): string => {
-    switch (level) {
-      case 'Neophyte': return 'NEOPHYTE';
-      case 'Junior': return 'JUNIOR';
-      case 'Senior Server': return 'SENIOR';
-      default: return 'UNK';
-    }
-  };
+  switch (level) {
+    case 'NEOPHYTE':
+      return 'NEOPHYTE';
+    case 'SENIOR':
+      return 'JUNIOR';
+    case 'Senior Server':
+      return 'SENIOR';
+    default: return 'SENIOR';
+  }
+};
 
   const handleMemberSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!memberFormData.name || !memberFormData.birthday || !memberFormData.address || 
+    if (!memberFormData.surname || !memberFormData.givenName || !memberFormData.birthday || !memberFormData.address || 
         !memberFormData.parentContact || !memberFormData.dateOfInvestiture || 
         !memberFormData.username || !memberFormData.password) {
       toast.error("Please fill in all required fields");
@@ -250,7 +239,8 @@ export default function UserManagement() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: memberFormData.name,
+          surname: memberFormData.surname,
+          givenName: memberFormData.givenName,
           birthday: memberFormData.birthday,
           address: memberFormData.address,
           parentContact: memberFormData.parentContact,
@@ -267,16 +257,15 @@ export default function UserManagement() {
       }
 
       const data = await response.json();
-      toast.success(`Member created successfully! Level: ${data.member.serviceLevel}`);
+      toast.success(`Member created successfully!`);
       console.log("Member created successfully:", data.member);
       
-      // Reload members list
       await loadMembers();
       
-      // Reset form
       setShowAddMemberForm(false);
       setMemberFormData({
-        name: "",
+        surname: "",
+        givenName: "",
         birthday: "",
         address: "",
         parentContact: "",
@@ -303,7 +292,6 @@ export default function UserManagement() {
       return;
     }
 
-    // Check if position is already taken
     const existingOfficer = officers.find(officer => 
       officer.position === officerFormData.position && officer.isActive
     );
@@ -313,7 +301,6 @@ export default function UserManagement() {
       return;
     }
 
-    // Check if member is already an officer
     const memberIsOfficer = officers.find(officer => 
       officer.memberId === officerFormData.memberId && officer.isActive
     );
@@ -326,17 +313,15 @@ export default function UserManagement() {
     setSubmitting(true);
 
     try {
-      // Find the selected member
       const selectedMember = members.find(member => member.id === officerFormData.memberId);
       if (!selectedMember) {
         throw new Error("Selected member not found");
       }
 
-      // Create new officer (in real app, this would be an API call)
       const newOfficer: Officer = {
         id: `officer-${Date.now()}`,
         memberId: officerFormData.memberId,
-        memberName: selectedMember.name,
+        memberName: formatMemberName(selectedMember.surname, selectedMember.givenName),
         position: officerFormData.position,
         email: selectedMember.email,
         contactNumber: selectedMember.parentContact,
@@ -345,9 +330,8 @@ export default function UserManagement() {
       };
 
       setOfficers([...officers, newOfficer]);
-      toast.success(`${selectedMember.name} appointed as ${officerFormData.position}!`);
+      toast.success(`${formatMemberName(selectedMember.surname, selectedMember.givenName)} appointed as ${officerFormData.position}!`);
       
-      // Reset form
       setShowAddOfficerForm(false);
       setOfficerFormData({
         memberId: "",
@@ -385,12 +369,9 @@ export default function UserManagement() {
         throw new Error(data.error || "Failed to remove member");
       }
 
-      toast.success(`${removeConfirmation.member.name} has been removed`);
+      toast.success(`${formatMemberName(removeConfirmation.member.surname, removeConfirmation.member.givenName)} has been removed`);
       
-      // Remove member from local state
       setMembers(prev => prev.filter(m => m.id !== removeConfirmation.member?.id));
-      
-      // Close confirmation dialog
       setRemoveConfirmation({ isOpen: false, member: null });
       
     } catch (error: any) {
@@ -474,8 +455,7 @@ export default function UserManagement() {
                 >
                   <div className="grid grid-cols-4 gap-4 text-sm">
                     <div className="font-medium text-gray-900">
-                      {member.name}
-                      {/* <div className="text-xs text-gray-500">{member.memberId}</div> */}
+                      {formatMemberName(member.surname, member.givenName)}
                     </div>
                     <div className="text-gray-600">
                       {new Date(member.birthdate).toLocaleDateString('en-US', { 
@@ -483,7 +463,7 @@ export default function UserManagement() {
                         day: 'numeric' 
                       })}
                     </div>
-                    <div className="text-gray-600">{member.age}</div>
+                    <div className="text-gray-600">{member.age || 0}</div>
                     <div>
                       <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
                         {getServiceLevelAbbreviation(member.serviceLevel)}
@@ -606,7 +586,6 @@ export default function UserManagement() {
       {/* Blue Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-6">
         <div className="flex items-center justify-between">
-          {/* Back Button */}
           <Link
             href="/admin"
             className="text-white hover:text-blue-100"
@@ -616,7 +595,6 @@ export default function UserManagement() {
             </svg>
           </Link>
 
-          {/* MAS Logo */}
           <div className="relative w-16 h-12">
             <Image
               src="/images/MAS LOGO.png"
@@ -633,7 +611,6 @@ export default function UserManagement() {
       {/* White Action Bar with Tabs */}
       <div className="bg-white px-4 py-4 shadow-sm">
         <div className="flex items-center justify-between">
-          {/* Tab Icons */}
           <div className="flex items-center space-x-4">
             <button
               onClick={() => setActiveTab('members')}
@@ -667,7 +644,6 @@ export default function UserManagement() {
             </button>
           </div>
 
-          {/* Add Button */}
           <button
             onClick={handleAddButtonClick}
             className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition-colors flex items-center"
@@ -677,7 +653,7 @@ export default function UserManagement() {
         </div>
       </div>
 
-      {/* Table Headers - Updated for different tab layouts */}
+      {/* Table Headers */}
       <div className="bg-white px-4 py-3 border-b border-gray-200 sticky top-0 z-10">
         <div className={`grid gap-4 text-xs font-medium text-gray-600 uppercase tracking-wider ${
           activeTab === 'officers' ? 'grid-cols-2' : 
@@ -693,11 +669,8 @@ export default function UserManagement() {
       {/* Tab Content */}
       <div className="bg-white min-h-screen">
         {renderTabContent()}
-        {/* Extra padding for bottom navigation */}
         <div className="h-32"></div>
       </div>
-
-      {/* All modals remain the same as previous version... */}
 
       {/* Remove Confirmation Modal */}
       {removeConfirmation.isOpen && (
@@ -714,7 +687,9 @@ export default function UserManagement() {
               </div>
               
               <p className="text-gray-600 mb-6">
-                Are you sure you want to remove <span className="font-semibold">{removeConfirmation.member?.name}</span> from the ministry? This action cannot be undone.
+                Are you sure you want to remove <span className="font-semibold">
+                  {removeConfirmation.member && formatMemberName(removeConfirmation.member.surname, removeConfirmation.member.givenName)}
+                </span> from the ministry? This action cannot be undone.
               </p>
               
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-6">
@@ -769,11 +744,12 @@ export default function UserManagement() {
                 <div className="text-center mb-6">
                   <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
                     <span className="text-blue-600 font-bold text-2xl">
-                      {selectedMember.name.charAt(0)}
+                      {selectedMember.surname.charAt(0)}
                     </span>
                   </div>
-                  <h3 className="text-xl font-semibold">{selectedMember.name}</h3>
-                  <p className="text-gray-500">{selectedMember.memberId}</p>
+                  <h3 className="text-xl font-semibold">
+                    {formatMemberName(selectedMember.surname, selectedMember.givenName)}
+                  </h3>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -860,17 +836,33 @@ export default function UserManagement() {
               <form onSubmit={handleMemberSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name *
+                    Surname (Last Name) *
                   </label>
                   <input
                     type="text"
-                    name="name"
-                    value={memberFormData.name}
+                    name="surname"
+                    value={memberFormData.surname}
                     onChange={handleMemberChange}
                     required
                     disabled={submitting}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-                    placeholder="Enter full name"
+                    placeholder="Enter surname"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Given Name (First Name) *
+                  </label>
+                  <input
+                    type="text"
+                    name="givenName"
+                    value={memberFormData.givenName}
+                    onChange={handleMemberChange}
+                    required
+                    disabled={submitting}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                    placeholder="Enter given name"
                   />
                 </div>
 
@@ -1081,7 +1073,7 @@ export default function UserManagement() {
                     <option value="">Choose a member...</option>
                     {getAvailableMembers().map((member) => (
                       <option key={member.id} value={member.id}>
-                        {member.name} ({member.serviceLevel})
+                        {formatMemberName(member.surname, member.givenName)} ({member.serviceLevel})
                       </option>
                     ))}
                   </select>
@@ -1164,7 +1156,7 @@ export default function UserManagement() {
         </div>
       )}
 
-      {/* Bottom Navigation - Fixed */}
+      {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-blue-800 rounded-t-2xl p-4 z-40">
         <div className="flex justify-center space-x-8">
           <Link
