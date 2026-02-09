@@ -502,7 +502,7 @@ export default function Home() {
             </div>
           </Container>
         </section>
-
+            
         {/* Login Selection Section */}
         <section id="loginSection" className="py-16 bg-gradient-to-br from-blue-600 to-blue-800 text-white">
           <Container>
